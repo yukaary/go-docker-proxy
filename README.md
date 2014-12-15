@@ -15,7 +15,7 @@ $ go install github.com/yukaary/go-docker-proxy
 ## Usage
 
 ```
-$ /go/bin/go-docker-proxy -stderrthreshold=INFO -etcd-endpoint http://172.17.8.101:4001 -service-name frontend
+$ /go/bin/go-docker-proxy -stderrthreshold=INFO -etcd-endpoint http://172.17.8.101:4001 -scheme http -backend-port 3000 -service-name frontend
 ```
 
 where `etcd-endpoint` is a one of the etcd endpoint forming a cluster, `servie_name` is a head of a host name of scaled service which has a fullname like frontend_1, frontend_2, ..., frontend_N - this is the changed behaviour of [fig, better-recreate branch](https://github.com/yukaary/fig/commits/better_recreate).
@@ -27,7 +27,7 @@ Description in `fig.yml` looks like that.
 ```
 goproxy:
     build: ./go-docker-proxy
-    command: /go/bin/go-docker-proxy -stderrthreshold=INFO -etcd-endpoint http://172.17.8.101:4001 -service-name frontend
+    command: /go/bin/go-docker-proxy -stderrthreshold=INFO -etcd-endpoint http://172.17.8.101:4001 -scheme http -backend-port 3000 -service-name frontend
     ports:
         - "10080:80"
     dns:
