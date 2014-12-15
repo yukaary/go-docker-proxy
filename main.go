@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"sync"
+	"time"
 )
 
 type Backend struct {
@@ -51,6 +52,7 @@ func (self *Backend) fetch() {
 	for _, node := range self.etcdcli.GetDir("services", self.serviceName) {
 		self.apps[node.Key] = genUrl(self.scheme, node.Value, self.port)
 	}
+	self.nextRing = self.NewRing()
 }
 
 func (self *Backend) NewRing() *ring.Ring {
@@ -58,12 +60,16 @@ func (self *Backend) NewRing() *ring.Ring {
 
 	// when load balance routine (maybe it's a director function?) detects
 	// new ring, it should switch it soon.
+	for _, v := range self.apps {
+		backendRing.Value = v
+		backendRing = backendRing.Next()
+	}
 
 	return backendRing
 }
 
 func genUrl(scheme, body, port string) *url.URL {
-	url, _ := url.Parse(scheme + body + ":" + port)
+	url, _ := url.Parse(scheme + "://" + body + ":" + port)
 	return url
 }
 
@@ -78,7 +84,7 @@ func main() {
 	glog.Infof("etcd_endpoint: %s", *etcd_endpoint)
 	glog.Infof("service_name: %s", *service_name)
 
-	backend = NewBackend(*etcd_endpoint, "http://", "3000", *service_name)
+	backend = NewBackend(*etcd_endpoint, "http", "3000", *service_name)
 	backend.fetch()
 	for k, v := range backend.apps {
 		glog.Infof("backend app: %s %s", k, v.String())
@@ -103,6 +109,12 @@ func main() {
 		Addr:    ":80",
 		Handler: proxy,
 	}
-	server.ListenAndServe()
 
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			backend.fetch()
+		}
+	}()
+	server.ListenAndServe()
 }
